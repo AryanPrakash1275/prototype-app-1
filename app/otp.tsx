@@ -4,12 +4,16 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import {
   Alert,
-  Pressable,
+  KeyboardAvoidingView,
+  Platform,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
+import AppScreen from "../src/components/AppScreen";
+import PrimaryButton from "../src/components/PrimaryButton";
+import { theme } from "../src/themes";
 
 const AUTH_STORAGE_KEY = "staffing_app_authenticated";
 
@@ -20,6 +24,7 @@ export default function OtpScreen() {
     name?: string;
     city?: string;
   }>();
+
   const [otp, setOtp] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -56,87 +61,126 @@ export default function OtpScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Verify OTP</Text>
-      <Text style={styles.subtitle}>
-        Enter the 4-digit OTP sent to {phone ?? "your phone"}
-      </Text>
-
-      <TextInput
-        value={otp}
-        onChangeText={setOtp}
-        placeholder="Enter OTP"
-        keyboardType="number-pad"
-        maxLength={4}
-        style={styles.input}
-      />
-
-      <Pressable
-        style={styles.button}
-        onPress={handleVerify}
-        disabled={isSubmitting}
+    <AppScreen>
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <Text style={styles.buttonText}>
-          {isSubmitting ? "Verifying..." : "Verify"}
-        </Text>
-      </Pressable>
+        <View style={styles.content}>
+          <View style={styles.heroCard}>
+            <Text style={styles.eyebrow}>Step 2 of 2</Text>
+            <Text style={styles.title}>Verify OTP</Text>
+            <Text style={styles.subtitle}>
+              Enter the 4-digit code sent to {phone ?? "your phone"}.
+            </Text>
+          </View>
 
-      <Pressable
-        style={styles.secondaryButton}
-        onPress={() => router.back()}
-        disabled={isSubmitting}
-      >
-        <Text style={styles.secondaryButtonText}>Change details</Text>
-      </Pressable>
-    </View>
+          <View style={styles.formCard}>
+            <Text style={styles.label}>OTP</Text>
+
+            <TextInput
+              value={otp}
+              onChangeText={(text) =>
+                setOtp(text.replace(/[^0-9]/g, "").slice(0, 4))
+              }
+              placeholder="Enter OTP"
+              placeholderTextColor={theme.colors.textMuted}
+              keyboardType="number-pad"
+              maxLength={4}
+              style={styles.input}
+              textAlign="center"
+            />
+
+            <PrimaryButton
+              label={isSubmitting ? "Verifying..." : "Verify"}
+              onPress={handleVerify}
+              disabled={isSubmitting}
+              loading={isSubmitting}
+            />
+
+            <Text style={styles.secondaryText} onPress={() => router.back()}>
+              Change details
+            </Text>
+
+            <Text style={styles.note}>
+              OTP is mocked right now for MVP flow.
+            </Text>
+          </View>
+        </View>
+      </KeyboardAvoidingView>
+    </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  flex: {
+    flex: 1,
+  },
+  content: {
     flex: 1,
     justifyContent: "center",
-    padding: 24,
-    backgroundColor: "#fff",
+    gap: theme.spacing.lg,
+  },
+  heroCard: {
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.xl,
+    padding: theme.spacing.xl,
+  },
+  eyebrow: {
+    color: theme.colors.primary,
+    fontSize: theme.typography.small,
+    fontWeight: "700",
+    marginBottom: theme.spacing.sm,
   },
   title: {
-    fontSize: 28,
-    fontWeight: "700",
-    marginBottom: 8,
+    color: theme.colors.text,
+    fontSize: theme.typography.h1,
+    fontWeight: "800",
+    marginBottom: theme.spacing.sm,
   },
   subtitle: {
-    fontSize: 16,
-    color: "#666",
-    marginBottom: 24,
+    color: theme.colors.textMuted,
+    fontSize: theme.typography.body,
+    lineHeight: 22,
+  },
+  formCard: {
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.xl,
+    padding: theme.spacing.xl,
+  },
+  label: {
+    color: theme.colors.text,
+    fontSize: theme.typography.small,
+    fontWeight: "700",
+    marginBottom: theme.spacing.sm,
   },
   input: {
     borderWidth: 1,
-    borderColor: "#d0d0d0",
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 16,
-    marginBottom: 16,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surfaceSoft,
+    borderRadius: theme.radius.md,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: 16,
+    fontSize: 24,
+    letterSpacing: 10,
+    color: theme.colors.text,
+    marginBottom: theme.spacing.lg,
   },
-  button: {
-    backgroundColor: "#111",
-    paddingVertical: 14,
-    borderRadius: 10,
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  buttonText: {
-    color: "#fff",
-    fontSize: 16,
+  secondaryText: {
+    marginTop: theme.spacing.md,
+    textAlign: "center",
+    color: theme.colors.textMuted,
+    fontSize: theme.typography.small,
     fontWeight: "600",
   },
-  secondaryButton: {
-    alignItems: "center",
-    paddingVertical: 8,
-  },
-  secondaryButtonText: {
-    color: "#111",
-    fontSize: 14,
-    fontWeight: "500",
+  note: {
+    marginTop: theme.spacing.lg,
+    textAlign: "center",
+    color: theme.colors.textMuted,
+    fontSize: theme.typography.tiny,
   },
 });

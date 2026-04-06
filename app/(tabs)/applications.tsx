@@ -4,11 +4,14 @@ import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  RefreshControl,
   StyleSheet,
   Text,
   View,
 } from "react-native";
 import { getApplications } from "../../src/api/application";
+import StatusBadge from "../../src/components/StatusBadge";
+import { theme } from "../../src/themes";
 
 const AUTH_STORAGE_KEY = "staffing_app_authenticated";
 
@@ -45,13 +48,32 @@ function formatShift(start: string, end: string) {
   return `${start.slice(0, 5)} - ${end.slice(0, 5)}`;
 }
 
+function getStatusTone(status: string): "success" | "warning" | "neutral" {
+  const normalized = status.toLowerCase();
+
+  if (normalized === "approved") {
+    return "success";
+  }
+
+  if (normalized === "pending") {
+    return "warning";
+  }
+
+  return "neutral";
+}
+
 export default function ApplicationsScreen() {
   const [applications, setApplications] = useState<ApplicationItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const loadApplications = useCallback(async () => {
+  const loadApplications = useCallback(async (isRefresh = false) => {
     try {
-      setLoading(true);
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
 
       const savedUser = await AsyncStorage.getItem(AUTH_STORAGE_KEY);
       const parsedUser = savedUser ? JSON.parse(savedUser) : null;
@@ -68,6 +90,7 @@ export default function ApplicationsScreen() {
       setApplications([]);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, []);
 
@@ -80,87 +103,193 @@ export default function ApplicationsScreen() {
   if (loading) {
     return (
       <View style={styles.empty}>
-        <ActivityIndicator size="large" />
+        <ActivityIndicator size="large" color={theme.colors.primary} />
         <Text style={styles.helperText}>Loading applications...</Text>
       </View>
     );
   }
 
-  if (applications.length === 0) {
-    return (
-      <View style={styles.empty}>
-        <Text>No applications yet</Text>
-      </View>
-    );
-  }
-
   return (
-    <FlatList
-      data={applications}
-      keyExtractor={(item) => item.id.toString()}
-      contentContainerStyle={styles.listContent}
-      renderItem={({ item }) => (
-        <View style={styles.card}>
-          <Text style={styles.title}>{item.event.title}</Text>
-          <Text style={styles.location}>
-            {item.event.location}, {item.event.city}
-          </Text>
-          <Text style={styles.meta}>
-            Date: {formatDate(item.event.eventDate)}
-          </Text>
-          <Text style={styles.meta}>
-            Shift: {formatShift(item.event.shiftStart, item.event.shiftEnd)}
-          </Text>
-          <Text style={styles.meta}>Pay: ₹{item.event.payPerDay}/day</Text>
-          <Text style={styles.status}>Status: {item.status}</Text>
-        </View>
-      )}
-    />
+    <View style={styles.screen}>
+      <FlatList
+        data={applications}
+        keyExtractor={(item) => item.id.toString()}
+        contentContainerStyle={[
+          styles.listContent,
+          applications.length === 0 && styles.emptyListContent,
+        ]}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => loadApplications(true)}
+          />
+        }
+        ListHeaderComponent={
+          <View style={styles.header}>
+            <Text style={styles.heading}>My Applications</Text>
+            <Text style={styles.subheading}>
+              Track the status of the events you’ve applied for.
+            </Text>
+          </View>
+        }
+        ListEmptyComponent={
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyTitle}>No applications yet</Text>
+            <Text style={styles.emptySubtitle}>
+              Apply to an event and it will show up here.
+            </Text>
+          </View>
+        }
+        renderItem={({ item }) => (
+          <View style={styles.card}>
+            <View style={styles.cardTop}>
+              <Text style={styles.title}>{item.event.title}</Text>
+              <StatusBadge
+                label={item.status}
+                tone={getStatusTone(item.status)}
+              />
+            </View>
+
+            <Text style={styles.location}>
+              {item.event.location}, {item.event.city}
+            </Text>
+
+            <View style={styles.metaGrid}>
+              <View style={styles.metaBox}>
+                <Text style={styles.metaLabel}>Date</Text>
+                <Text style={styles.metaValue}>
+                  {formatDate(item.event.eventDate)}
+                </Text>
+              </View>
+
+              <View style={styles.metaBox}>
+                <Text style={styles.metaLabel}>Pay</Text>
+                <Text style={styles.metaValue}>
+                  ₹{item.event.payPerDay}/day
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.shiftBox}>
+              <Text style={styles.metaLabel}>Shift</Text>
+              <Text style={styles.metaValue}>
+                {formatShift(item.event.shiftStart, item.event.shiftEnd)}
+              </Text>
+            </View>
+          </View>
+        )}
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: theme.colors.background,
+  },
   empty: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#fff",
-    padding: 24,
+    backgroundColor: theme.colors.background,
+    padding: theme.spacing.xl,
   },
   helperText: {
-    marginTop: 12,
-    color: "#666",
-    fontSize: 15,
+    marginTop: theme.spacing.md,
+    color: theme.colors.textMuted,
+    fontSize: theme.typography.body,
   },
   listContent: {
-    padding: 16,
-    backgroundColor: "#fff",
+    paddingHorizontal: theme.spacing.lg,
+    paddingTop: theme.spacing.lg,
+    paddingBottom: theme.spacing.xxl,
+    backgroundColor: theme.colors.background,
+  },
+  emptyListContent: {
     flexGrow: 1,
   },
+  header: {
+    marginBottom: theme.spacing.lg,
+  },
+  heading: {
+    color: theme.colors.text,
+    fontSize: theme.typography.h1,
+    fontWeight: "800",
+    marginBottom: theme.spacing.xs,
+  },
+  subheading: {
+    color: theme.colors.textMuted,
+    fontSize: theme.typography.body,
+    lineHeight: 22,
+  },
+  emptyState: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingTop: 80,
+  },
+  emptyTitle: {
+    color: theme.colors.text,
+    fontSize: theme.typography.h3,
+    fontWeight: "700",
+    marginBottom: theme.spacing.xs,
+  },
+  emptySubtitle: {
+    color: theme.colors.textMuted,
+    fontSize: theme.typography.body,
+    textAlign: "center",
+  },
   card: {
-    padding: 16,
+    backgroundColor: theme.colors.surface,
     borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 10,
-    marginBottom: 12,
-    backgroundColor: "#fff",
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.lg,
+    padding: theme.spacing.lg,
+    marginBottom: theme.spacing.md,
+  },
+  cardTop: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: theme.spacing.sm,
+    marginBottom: theme.spacing.sm,
   },
   title: {
-    fontSize: 18,
-    fontWeight: "600",
-    marginBottom: 4,
+    flex: 1,
+    color: theme.colors.text,
+    fontSize: theme.typography.h3,
+    fontWeight: "700",
   },
   location: {
-    color: "#666",
-    marginBottom: 8,
+    color: theme.colors.textMuted,
+    fontSize: theme.typography.small,
+    marginBottom: theme.spacing.md,
   },
-  meta: {
-    color: "#333",
+  metaGrid: {
+    flexDirection: "row",
+    gap: theme.spacing.sm,
+    marginBottom: theme.spacing.sm,
+  },
+  metaBox: {
+    flex: 1,
+    backgroundColor: theme.colors.surfaceSoft,
+    borderRadius: theme.radius.md,
+    padding: theme.spacing.md,
+  },
+  shiftBox: {
+    backgroundColor: theme.colors.surfaceSoft,
+    borderRadius: theme.radius.md,
+    padding: theme.spacing.md,
+  },
+  metaLabel: {
+    color: theme.colors.textMuted,
+    fontSize: theme.typography.tiny,
     marginBottom: 4,
   },
-  status: {
-    marginTop: 8,
-    fontWeight: "600",
-    color: "#111",
+  metaValue: {
+    color: theme.colors.text,
+    fontSize: theme.typography.body,
+    fontWeight: "700",
   },
 });

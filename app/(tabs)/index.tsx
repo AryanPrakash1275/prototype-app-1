@@ -1,32 +1,49 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
-import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import { useState } from "react";
+import { Alert, StyleSheet, Text, View } from "react-native";
+import PrimaryButton from "../../src/components/PrimaryButton";
+import { theme } from "../../src/themes";
 
 const AUTH_STORAGE_KEY = "staffing_app_authenticated";
 
 export default function HomeScreen() {
   const router = useRouter();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const handleLogout = async () => {
-    try {
-      await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
+    if (isLoggingOut) return;
 
-      router.dismissAll();
-      router.replace("/");
+    try {
+      setIsLoggingOut(true);
+      await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
+      router.replace("/login");
     } catch (error) {
       console.log("Failed to clear auth state:", error);
       Alert.alert("Error", "Could not log out. Please try again.");
+      setIsLoggingOut(false);
     }
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Welcome</Text>
-      <Text style={styles.subtitle}>You are logged in as a volunteer.</Text>
+      <View style={styles.card}>
+        <Text style={styles.eyebrow}>Dashboard</Text>
+        <Text style={styles.title}>Welcome</Text>
+        <Text style={styles.subtitle}>
+          You are logged in as a volunteer. Browse events, apply quickly, and
+          track your application status.
+        </Text>
 
-      <Pressable style={styles.button} onPress={handleLogout}>
-        <Text style={styles.buttonText}>Logout</Text>
-      </Pressable>
+        <View style={styles.actionWrap}>
+          <PrimaryButton
+            label={isLoggingOut ? "Logging out..." : "Logout"}
+            onPress={handleLogout}
+            disabled={isLoggingOut}
+            loading={isLoggingOut}
+          />
+        </View>
+      </View>
     </View>
   );
 }
@@ -34,29 +51,35 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: theme.colors.background,
+    padding: theme.spacing.lg,
     justifyContent: "center",
-    padding: 24,
-    backgroundColor: "#fff",
+  },
+  card: {
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.xl,
+    padding: theme.spacing.xl,
+  },
+  eyebrow: {
+    color: theme.colors.primary,
+    fontSize: theme.typography.small,
+    fontWeight: "700",
+    marginBottom: theme.spacing.sm,
   },
   title: {
-    fontSize: 28,
-    fontWeight: "700",
-    marginBottom: 8,
+    color: theme.colors.text,
+    fontSize: theme.typography.h1,
+    fontWeight: "800",
+    marginBottom: theme.spacing.sm,
   },
   subtitle: {
-    fontSize: 16,
-    color: "#666",
-    marginBottom: 24,
+    color: theme.colors.textMuted,
+    fontSize: theme.typography.body,
+    lineHeight: 22,
   },
-  button: {
-    backgroundColor: "#111",
-    paddingVertical: 14,
-    borderRadius: 10,
-    alignItems: "center",
-  },
-  buttonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
+  actionWrap: {
+    marginTop: theme.spacing.xl,
   },
 });

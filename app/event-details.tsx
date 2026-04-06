@@ -5,13 +5,16 @@ import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
 import { applyToEvent, getApplications } from "../src/api/application";
 import { getEvents } from "../src/api/event";
+import PrimaryButton from "../src/components/PrimaryButton";
+import StatusBadge from "../src/components/StatusBadge";
+import { theme } from "../src/themes";
 
 const AUTH_STORAGE_KEY = "staffing_app_authenticated";
 
@@ -159,7 +162,7 @@ export default function EventDetailsScreen() {
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" />
+        <ActivityIndicator size="large" color={theme.colors.primary} />
         <Text style={styles.helperText}>Loading event...</Text>
       </View>
     );
@@ -167,136 +170,218 @@ export default function EventDetailsScreen() {
 
   if (!event) {
     return (
-      <View style={styles.container}>
-        <Text style={styles.title}>Event not found</Text>
+      <View style={styles.centered}>
+        <Text style={styles.emptyTitle}>Event not found</Text>
+        <Text style={styles.emptySubtitle}>
+          This event may have been removed or is no longer available.
+        </Text>
 
-        <Pressable style={styles.secondaryButton} onPress={handleBackToEvents}>
-          <Text style={styles.secondaryButtonText}>Go to Events</Text>
-        </Pressable>
+        <View style={styles.emptyButtonWrap}>
+          <PrimaryButton label="Go to Events" onPress={handleBackToEvents} />
+        </View>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>{event.title}</Text>
-      <Text style={styles.location}>
-        {event.location}, {event.city}
-      </Text>
-
-      <View style={styles.section}>
-        <Text style={styles.label}>Pay</Text>
-        <Text style={styles.value}>₹{event.payPerDay}/day</Text>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.label}>Date</Text>
-        <Text style={styles.value}>{formatDate(event.eventDate)}</Text>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.label}>Shift</Text>
-        <Text style={styles.value}>
-          {formatShift(event.shiftStart, event.shiftEnd)}
-        </Text>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.label}>About this event</Text>
-        <Text style={styles.description}>{event.description}</Text>
-      </View>
-
-      <Pressable
-        style={[
-          styles.button,
-          (isApplied || isSubmitting) && styles.appliedButton,
-        ]}
-        onPress={handleApply}
-        disabled={isApplied || isSubmitting}
+    <View style={styles.screen}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.buttonText}>
-          {isSubmitting ? "Applying..." : isApplied ? "Applied" : "Apply Now"}
-        </Text>
-      </Pressable>
+        <View style={styles.heroCard}>
+          <View style={styles.heroTop}>
+            <View style={styles.heroTextWrap}>
+              <Text style={styles.title}>{event.title}</Text>
+              <Text style={styles.location}>
+                {event.location}, {event.city}
+              </Text>
+            </View>
 
-      <Pressable style={styles.secondaryButton} onPress={handleBackToEvents}>
-        <Text style={styles.secondaryButtonText}>Back to Events</Text>
-      </Pressable>
+            {isApplied ? <StatusBadge label="Applied" tone="success" /> : null}
+          </View>
+        </View>
+
+        <View style={styles.statsRow}>
+          <View style={styles.statCard}>
+            <Text style={styles.statLabel}>Pay</Text>
+            <Text style={styles.statValue}>₹{event.payPerDay}/day</Text>
+          </View>
+
+          <View style={styles.statCard}>
+            <Text style={styles.statLabel}>Openings</Text>
+            <Text style={styles.statValue}>{event.requiredVolunteers}</Text>
+          </View>
+        </View>
+
+        <View style={styles.detailCard}>
+          <Text style={styles.sectionLabel}>Date</Text>
+          <Text style={styles.sectionValue}>{formatDate(event.eventDate)}</Text>
+        </View>
+
+        <View style={styles.detailCard}>
+          <Text style={styles.sectionLabel}>Shift</Text>
+          <Text style={styles.sectionValue}>
+            {formatShift(event.shiftStart, event.shiftEnd)}
+          </Text>
+        </View>
+
+        <View style={styles.detailCard}>
+          <Text style={styles.sectionLabel}>About this event</Text>
+          <Text style={styles.description}>
+            {event.description?.trim() || "No description available."}
+          </Text>
+        </View>
+      </ScrollView>
+
+      <View style={styles.footer}>
+        <PrimaryButton
+          label={
+            isSubmitting ? "Applying..." : isApplied ? "Applied" : "Apply Now"
+          }
+          onPress={handleApply}
+          disabled={isApplied || isSubmitting}
+          loading={isSubmitting}
+        />
+
+        <Text style={styles.backText} onPress={handleBackToEvents}>
+          Back to Events
+        </Text>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: theme.colors.background,
+  },
   centered: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    padding: 24,
-    backgroundColor: "#fff",
+    backgroundColor: theme.colors.background,
+    padding: theme.spacing.xl,
   },
   helperText: {
-    marginTop: 12,
-    color: "#666",
-    fontSize: 15,
+    marginTop: theme.spacing.md,
+    color: theme.colors.textMuted,
+    fontSize: theme.typography.body,
   },
-  container: {
-    flex: 1,
-    padding: 24,
-    backgroundColor: "#fff",
+  emptyTitle: {
+    color: theme.colors.text,
+    fontSize: theme.typography.h2,
+    fontWeight: "800",
+    marginBottom: theme.spacing.sm,
   },
-  title: {
-    fontSize: 28,
-    fontWeight: "700",
-    marginBottom: 8,
-  },
-  location: {
-    fontSize: 16,
-    color: "#666",
-    marginBottom: 24,
-  },
-  section: {
-    marginBottom: 16,
-  },
-  label: {
-    fontSize: 13,
-    color: "#666",
-    marginBottom: 4,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  value: {
-    fontSize: 17,
-    color: "#111",
-    fontWeight: "500",
-  },
-  description: {
-    fontSize: 16,
-    color: "#333",
+  emptySubtitle: {
+    color: theme.colors.textMuted,
+    fontSize: theme.typography.body,
+    textAlign: "center",
     lineHeight: 22,
   },
-  button: {
-    backgroundColor: "#111",
-    paddingVertical: 14,
-    borderRadius: 10,
-    alignItems: "center",
-    marginTop: 12,
+  emptyButtonWrap: {
+    width: "100%",
+    marginTop: theme.spacing.xl,
   },
-  appliedButton: {
-    backgroundColor: "gray",
+  content: {
+    padding: theme.spacing.lg,
+    paddingBottom: 140,
   },
-  buttonText: {
-    color: "#fff",
-    fontSize: 16,
+  heroCard: {
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.xl,
+    padding: theme.spacing.xl,
+    marginBottom: theme.spacing.md,
+  },
+  heroTop: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: theme.spacing.md,
+  },
+  heroTextWrap: {
+    flex: 1,
+  },
+  title: {
+    color: theme.colors.text,
+    fontSize: theme.typography.h1,
+    fontWeight: "800",
+    lineHeight: 34,
+    marginBottom: theme.spacing.sm,
+  },
+  location: {
+    color: theme.colors.textMuted,
+    fontSize: theme.typography.body,
+  },
+  statsRow: {
+    flexDirection: "row",
+    gap: theme.spacing.md,
+    marginBottom: theme.spacing.md,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.lg,
+    padding: theme.spacing.lg,
+  },
+  statLabel: {
+    color: theme.colors.textMuted,
+    fontSize: theme.typography.small,
+    marginBottom: theme.spacing.xs,
+  },
+  statValue: {
+    color: theme.colors.text,
+    fontSize: theme.typography.h3,
+    fontWeight: "700",
+  },
+  detailCard: {
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.lg,
+    padding: theme.spacing.lg,
+    marginBottom: theme.spacing.md,
+  },
+  sectionLabel: {
+    color: theme.colors.textMuted,
+    fontSize: theme.typography.small,
     fontWeight: "600",
+    marginBottom: theme.spacing.xs,
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
   },
-  secondaryButton: {
-    alignItems: "center",
-    paddingVertical: 12,
-    marginTop: 10,
+  sectionValue: {
+    color: theme.colors.text,
+    fontSize: theme.typography.body,
+    fontWeight: "700",
   },
-  secondaryButtonText: {
-    color: "#111",
-    fontSize: 15,
-    fontWeight: "500",
+  description: {
+    color: theme.colors.text,
+    fontSize: theme.typography.body,
+    lineHeight: 24,
+  },
+  footer: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingHorizontal: theme.spacing.lg,
+    paddingTop: theme.spacing.md,
+    paddingBottom: theme.spacing.lg,
+    backgroundColor: theme.colors.background,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+  },
+  backText: {
+    marginTop: theme.spacing.md,
+    textAlign: "center",
+    color: theme.colors.textMuted,
+    fontSize: theme.typography.small,
+    fontWeight: "600",
   },
 });

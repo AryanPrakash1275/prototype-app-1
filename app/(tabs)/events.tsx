@@ -5,13 +5,15 @@ import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
-  Pressable,
+  RefreshControl,
   StyleSheet,
   Text,
   View,
 } from "react-native";
 import { getApplications } from "../../src/api/application";
 import { getEvents } from "../../src/api/event";
+import EventCard from "../../src/components/EventCard";
+import { theme } from "../../src/themes";
 
 const AUTH_STORAGE_KEY = "staffing_app_authenticated";
 
@@ -68,10 +70,15 @@ export default function EventsScreen() {
   const [events, setEvents] = useState<EventItem[]>([]);
   const [appliedIds, setAppliedIds] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (isRefresh = false) => {
     try {
-      setLoading(true);
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
 
       const savedUser = await AsyncStorage.getItem(AUTH_STORAGE_KEY);
       const parsedUser = savedUser ? JSON.parse(savedUser) : null;
@@ -94,6 +101,7 @@ export default function EventsScreen() {
       setAppliedIds([]);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, []);
 
@@ -106,124 +114,124 @@ export default function EventsScreen() {
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" />
+        <ActivityIndicator size="large" color={theme.colors.primary} />
         <Text style={styles.helperText}>Loading events...</Text>
       </View>
     );
   }
 
-  if (events.length === 0) {
-    return (
-      <View style={styles.centered}>
-        <Text style={styles.helperText}>No open events right now</Text>
-      </View>
-    );
-  }
-
   return (
-    <FlatList
-      data={events}
-      keyExtractor={(item) => item.id.toString()}
-      contentContainerStyle={styles.listContent}
-      renderItem={({ item }) => {
-        const applied = appliedIds.includes(item.id);
-
-        return (
-          <Pressable
-            style={styles.card}
-            onPress={() =>
-              router.push({
-                pathname: "/event-details",
-                params: { id: item.id.toString() },
-              })
-            }
-          >
-            <View style={styles.topRow}>
-              <Text style={styles.title}>{item.title}</Text>
-              {applied ? (
-                <View style={styles.appliedBadge}>
-                  <Text style={styles.appliedBadgeText}>Applied</Text>
-                </View>
-              ) : null}
-            </View>
-
-            <Text style={styles.location}>
-              {item.location}, {item.city}
+    <View style={styles.screen}>
+      <FlatList
+        data={events}
+        keyExtractor={(item) => item.id.toString()}
+        contentContainerStyle={[
+          styles.listContent,
+          events.length === 0 && styles.emptyListContent,
+        ]}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => loadData(true)}
+          />
+        }
+        ListHeaderComponent={
+          <View style={styles.header}>
+            <Text style={styles.heading}>Open Events</Text>
+            <Text style={styles.subheading}>
+              Browse available gigs and apply in a few taps.
             </Text>
-            <Text style={styles.meta}>Pay: ₹{item.payPerDay}/day</Text>
-            <Text style={styles.meta}>Date: {formatDate(item.eventDate)}</Text>
-            <Text style={styles.meta}>
-              Shift: {formatShift(item.shiftStart, item.shiftEnd)}
+          </View>
+        }
+        ListEmptyComponent={
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyTitle}>No open events right now</Text>
+            <Text style={styles.emptySubtitle}>
+              Pull to refresh and check again later.
             </Text>
+          </View>
+        }
+        renderItem={({ item }) => {
+          const applied = appliedIds.includes(item.id);
 
-            <Text style={styles.linkText}>View details</Text>
-          </Pressable>
-        );
-      }}
-    />
+          return (
+            <EventCard
+              title={item.title}
+              location={item.location}
+              city={item.city}
+              pay={item.payPerDay}
+              date={formatDate(item.eventDate)}
+              shift={formatShift(item.shiftStart, item.shiftEnd)}
+              applied={applied}
+              onPress={() =>
+                router.push({
+                  pathname: "/event-details",
+                  params: { id: item.id.toString() },
+                })
+              }
+            />
+          );
+        }}
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: theme.colors.background,
+  },
   centered: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#fff",
-    padding: 24,
+    backgroundColor: theme.colors.background,
+    padding: theme.spacing.xl,
   },
   helperText: {
-    marginTop: 12,
-    color: "#666",
-    fontSize: 15,
+    marginTop: theme.spacing.md,
+    color: theme.colors.textMuted,
+    fontSize: theme.typography.body,
   },
   listContent: {
-    padding: 16,
-    backgroundColor: "#fff",
+    paddingHorizontal: theme.spacing.lg,
+    paddingTop: theme.spacing.lg,
+    paddingBottom: theme.spacing.xxl,
+    backgroundColor: theme.colors.background,
+  },
+  emptyListContent: {
     flexGrow: 1,
   },
-  card: {
-    padding: 16,
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 12,
-    marginBottom: 12,
-    backgroundColor: "#fff",
+  header: {
+    marginBottom: theme.spacing.lg,
   },
-  topRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    gap: 8,
-    marginBottom: 6,
+  heading: {
+    color: theme.colors.text,
+    fontSize: theme.typography.h1,
+    fontWeight: "800",
+    marginBottom: theme.spacing.xs,
   },
-  title: {
+  subheading: {
+    color: theme.colors.textMuted,
+    fontSize: theme.typography.body,
+    lineHeight: 22,
+  },
+  emptyState: {
     flex: 1,
-    fontSize: 18,
-    fontWeight: "600",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingTop: 80,
   },
-  location: {
-    color: "#666",
-    marginBottom: 8,
+  emptyTitle: {
+    color: theme.colors.text,
+    fontSize: theme.typography.h3,
+    fontWeight: "700",
+    marginBottom: theme.spacing.xs,
   },
-  meta: {
-    color: "#333",
-    marginBottom: 4,
-  },
-  linkText: {
-    marginTop: 10,
-    color: "#111",
-    fontWeight: "600",
-  },
-  appliedBadge: {
-    backgroundColor: "#e6f4ea",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 999,
-  },
-  appliedBadgeText: {
-    color: "#1e7a34",
-    fontSize: 12,
-    fontWeight: "600",
+  emptySubtitle: {
+    color: theme.colors.textMuted,
+    fontSize: theme.typography.body,
+    textAlign: "center",
   },
 });
