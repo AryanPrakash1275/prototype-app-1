@@ -1,34 +1,9 @@
-import { router } from "expo-router";
-import { useState } from "react";
-import { StyleSheet, View } from "react-native";
-import { Button, Text, TextInput } from "react-native-paper";
+import { StyleSheet, Text, View } from "react-native";
 
-export default function Login() {
-  const [phone, setPhone] = useState("");
-
-  const handleSendOtp = () => {
-    console.log("Send OTP to:", phone);
-
-    // TEMP: simulate login
-    router.replace("/(tabs)");
-  };
-
+export default function Home() {
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Welcome</Text>
-
-      <TextInput
-        label="Phone Number"
-        value={phone}
-        onChangeText={setPhone}
-        keyboardType="phone-pad"
-        mode="outlined"
-        style={styles.input}
-      />
-
-      <Button mode="contained" onPress={handleSendOtp}>
-        Send OTP
-      </Button>
+      <Text style={styles.text}>Home - Events will show here</Text>
     </View>
   );
 }
@@ -36,14 +11,13 @@ export default function Login() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    alignItems: "center",
     justifyContent: "center",
-    padding: 20,
+    padding: 16,
+    backgroundColor: "#ffffff",
   },
-  title: {
-    fontSize: 24,
-    marginBottom: 20,
-  },
-  input: {
-    marginBottom: 16,
+  text: {
+    fontSize: 18,
+    fontWeight: "600",
   },
 });
