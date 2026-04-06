@@ -3,14 +3,13 @@ import { useRouter } from "expo-router";
 import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 
 const AUTH_STORAGE_KEY = "staffing_app_authenticated";
-const APPLICATIONS_KEY = "applications";
 
 export default function HomeScreen() {
   const router = useRouter();
 
   const handleLogout = async () => {
     try {
-      await AsyncStorage.multiRemove([AUTH_STORAGE_KEY, APPLICATIONS_KEY]);
+      await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
 
       router.dismissAll();
       router.replace("/");

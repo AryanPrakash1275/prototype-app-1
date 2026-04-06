@@ -2,66 +2,128 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import { useCallback, useState } from "react";
-import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  FlatList,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import { getApplications } from "../../src/api/application";
+import { getEvents } from "../../src/api/event";
 
-const APPLICATIONS_KEY = "applications";
+const AUTH_STORAGE_KEY = "staffing_app_authenticated";
 
-const dummyEvents = [
-  {
-    id: "1",
-    title: "Concert Event",
-    location: "Bangalore",
-    pay: "₹800/day",
-    date: "12 Apr 2026",
-    shift: "9 AM - 6 PM",
-  },
-  {
-    id: "2",
-    title: "Wedding Event",
-    location: "Hyderabad",
-    pay: "₹700/day",
-    date: "14 Apr 2026",
-    shift: "10 AM - 8 PM",
-  },
-  {
-    id: "3",
-    title: "Corporate Event",
-    location: "Mumbai",
-    pay: "₹900/day",
-    date: "18 Apr 2026",
-    shift: "8 AM - 5 PM",
-  },
-];
+type EventItem = {
+  id: number;
+  title: string;
+  location: string;
+  city: string;
+  eventDate: string;
+  shiftStart: string;
+  shiftEnd: string;
+  payPerDay: number;
+  description: string;
+  requiredVolunteers: number;
+  status: string;
+  createdAt: string;
+};
+
+type VolunteerApplication = {
+  id: number;
+  eventId: number;
+  volunteerId: number;
+  status: string;
+  appliedAt: string;
+  event: {
+    id: number;
+    title: string;
+    location: string;
+    city: string;
+    eventDate: string;
+    shiftStart: string;
+    shiftEnd: string;
+    payPerDay: number;
+    description: string;
+    status: string;
+  };
+};
+
+function formatDate(dateString: string) {
+  const date = new Date(dateString);
+  return date.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function formatShift(start: string, end: string) {
+  return `${start.slice(0, 5)} - ${end.slice(0, 5)}`;
+}
 
 export default function EventsScreen() {
   const router = useRouter();
-  const [appliedIds, setAppliedIds] = useState<string[]>([]);
+  const [events, setEvents] = useState<EventItem[]>([]);
+  const [appliedIds, setAppliedIds] = useState<number[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const loadData = useCallback(async () => {
+    try {
+      setLoading(true);
+
+      const savedUser = await AsyncStorage.getItem(AUTH_STORAGE_KEY);
+      const parsedUser = savedUser ? JSON.parse(savedUser) : null;
+
+      const eventsData = await getEvents();
+      setEvents(eventsData);
+
+      if (parsedUser?.id) {
+        const applicationsData: VolunteerApplication[] = await getApplications(
+          parsedUser.id,
+        );
+
+        setAppliedIds(applicationsData.map((item) => item.eventId));
+      } else {
+        setAppliedIds([]);
+      }
+    } catch (error) {
+      console.log("Failed to load events:", error);
+      setEvents([]);
+      setAppliedIds([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
-      const loadApplications = async () => {
-        try {
-          const stored = await AsyncStorage.getItem(APPLICATIONS_KEY);
-
-          if (stored) {
-            setAppliedIds(JSON.parse(stored));
-          } else {
-            setAppliedIds([]);
-          }
-        } catch (error) {
-          console.log("Failed to load applications:", error);
-          setAppliedIds([]);
-        }
-      };
-
-      loadApplications();
-    }, []),
+      loadData();
+    }, [loadData]),
   );
+
+  if (loading) {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" />
+        <Text style={styles.helperText}>Loading events...</Text>
+      </View>
+    );
+  }
+
+  if (events.length === 0) {
+    return (
+      <View style={styles.centered}>
+        <Text style={styles.helperText}>No open events right now</Text>
+      </View>
+    );
+  }
 
   return (
     <FlatList
-      data={dummyEvents}
-      keyExtractor={(item) => item.id}
+      data={events}
+      keyExtractor={(item) => item.id.toString()}
       contentContainerStyle={styles.listContent}
       renderItem={({ item }) => {
         const applied = appliedIds.includes(item.id);
@@ -72,7 +134,7 @@ export default function EventsScreen() {
             onPress={() =>
               router.push({
                 pathname: "/event-details",
-                params: { id: item.id },
+                params: { id: item.id.toString() },
               })
             }
           >
@@ -85,10 +147,14 @@ export default function EventsScreen() {
               ) : null}
             </View>
 
-            <Text style={styles.location}>{item.location}</Text>
-            <Text style={styles.meta}>Pay: {item.pay}</Text>
-            <Text style={styles.meta}>Date: {item.date}</Text>
-            <Text style={styles.meta}>Shift: {item.shift}</Text>
+            <Text style={styles.location}>
+              {item.location}, {item.city}
+            </Text>
+            <Text style={styles.meta}>Pay: ₹{item.payPerDay}/day</Text>
+            <Text style={styles.meta}>Date: {formatDate(item.eventDate)}</Text>
+            <Text style={styles.meta}>
+              Shift: {formatShift(item.shiftStart, item.shiftEnd)}
+            </Text>
 
             <Text style={styles.linkText}>View details</Text>
           </Pressable>
@@ -99,6 +165,18 @@ export default function EventsScreen() {
 }
 
 const styles = StyleSheet.create({
+  centered: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    padding: 24,
+  },
+  helperText: {
+    marginTop: 12,
+    color: "#666",
+    fontSize: 15,
+  },
   listContent: {
     padding: 16,
     backgroundColor: "#fff",

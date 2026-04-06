@@ -1,38 +1,55 @@
+import { loginVolunteer } from "@/src/api/volunteer";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import {
-    Alert,
-    Pressable,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
+  Alert,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
 
 const AUTH_STORAGE_KEY = "staffing_app_authenticated";
 
 export default function OtpScreen() {
   const router = useRouter();
-  const { phone } = useLocalSearchParams<{ phone?: string }>();
+  const { phone, name, city } = useLocalSearchParams<{
+    phone?: string;
+    name?: string;
+    city?: string;
+  }>();
   const [otp, setOtp] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleVerify = async () => {
-    const trimmed = otp.trim();
+    const trimmedOtp = otp.trim();
 
-    if (trimmed.length !== 4) {
+    if (trimmedOtp.length !== 4) {
       Alert.alert("Invalid OTP", "Please enter the 4-digit OTP.");
+      return;
+    }
+
+    if (!phone || !name || !city) {
+      Alert.alert(
+        "Error",
+        "Missing login details. Please go back and try again.",
+      );
       return;
     }
 
     try {
       setIsSubmitting(true);
-      await AsyncStorage.setItem(AUTH_STORAGE_KEY, "true");
+
+      const volunteer = await loginVolunteer(phone, name, city);
+
+      await AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(volunteer));
+
       router.replace("/(tabs)");
     } catch (error) {
-      Alert.alert("Error", "Could not save login state. Please try again.");
-      console.log("Failed to save auth state:", error);
+      Alert.alert("Error", "Could not log in. Please try again.");
+      console.log("Failed to log in:", error);
     } finally {
       setIsSubmitting(false);
     }
@@ -69,7 +86,7 @@ export default function OtpScreen() {
         onPress={() => router.back()}
         disabled={isSubmitting}
       >
-        <Text style={styles.secondaryButtonText}>Change phone number</Text>
+        <Text style={styles.secondaryButtonText}>Change details</Text>
       </Pressable>
     </View>
   );

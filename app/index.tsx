@@ -2,13 +2,13 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Pressable,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
 
 const AUTH_STORAGE_KEY = "staffing_app_authenticated";
@@ -16,14 +16,16 @@ const AUTH_STORAGE_KEY = "staffing_app_authenticated";
 export default function LoginScreen() {
   const router = useRouter();
   const [phone, setPhone] = useState("");
+  const [name, setName] = useState("");
+  const [city, setCity] = useState("");
   const [checkingAuth, setCheckingAuth] = useState(true);
 
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const isAuthenticated = await AsyncStorage.getItem(AUTH_STORAGE_KEY);
+        const savedUser = await AsyncStorage.getItem(AUTH_STORAGE_KEY);
 
-        if (isAuthenticated === "true") {
+        if (savedUser) {
           router.replace("/(tabs)");
           return;
         }
@@ -38,9 +40,21 @@ export default function LoginScreen() {
   }, [router]);
 
   const handleContinue = () => {
-    const trimmed = phone.trim();
+    const trimmedPhone = phone.trim();
+    const trimmedName = name.trim();
+    const trimmedCity = city.trim();
 
-    if (trimmed.length !== 10) {
+    if (trimmedName.length < 2) {
+      Alert.alert("Invalid name", "Please enter your name.");
+      return;
+    }
+
+    if (trimmedCity.length < 2) {
+      Alert.alert("Invalid city", "Please enter your city.");
+      return;
+    }
+
+    if (trimmedPhone.length !== 10) {
       Alert.alert(
         "Invalid phone number",
         "Please enter a valid 10-digit phone number.",
@@ -50,7 +64,11 @@ export default function LoginScreen() {
 
     router.push({
       pathname: "/otp",
-      params: { phone: trimmed },
+      params: {
+        phone: trimmedPhone,
+        name: trimmedName,
+        city: trimmedCity,
+      },
     });
   };
 
@@ -66,7 +84,23 @@ export default function LoginScreen() {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Volunteer Login</Text>
-      <Text style={styles.subtitle}>Enter your phone number to continue</Text>
+      <Text style={styles.subtitle}>Enter your details to continue</Text>
+
+      <TextInput
+        value={name}
+        onChangeText={setName}
+        placeholder="Enter your name"
+        autoCapitalize="words"
+        style={styles.input}
+      />
+
+      <TextInput
+        value={city}
+        onChangeText={setCity}
+        placeholder="Enter your city"
+        autoCapitalize="words"
+        style={styles.input}
+      />
 
       <TextInput
         value={phone}

@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "staffing-app",
-    "slug": "staffing-app",
+    "slug": "prototype-app-1",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -19,7 +19,8 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.aryan1275sorganization.prototypeapp1"
     },
     "web": {
       "output": "static",
@@ -43,6 +44,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "6cc9e357-5185-4cfd-90a7-45def152b750"
+      }
+    },
+    "owner": "aryan1275s-organization"
   }
 }
